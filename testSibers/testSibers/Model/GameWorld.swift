@@ -39,7 +39,7 @@ class GameWorld: GameWorldProtocol {
         self.player = Player(currentPosition: (0, 0))
         self.stepsLimit = 100
     }
-    
+    //MARK: Generating labyrinth
     func generateMaze(roomCount: Int) {
         let size = Int(ceil(sqrt(Double(roomCount))))
         
@@ -62,11 +62,9 @@ class GameWorld: GameWorldProtocol {
         
         let keyPosition = findReachablePosition(size: size, exclude: (startX, startY))
         let chestPosition = findReachablePosition(size: size, exclude: keyPosition)
-        let torchPosition = findReachablePosition(size: size, exclude: keyPosition)
         
         rooms[keyPosition.y][keyPosition.x]?.items.append(Item(name: "Key", type: .key))
         rooms[chestPosition.y][chestPosition.x]?.items.append(Item(name: "Chest", type: .chest))
-        rooms[torchPosition.y][torchPosition.x]?.items.append(Item(name: "Torch", type: .torch))
         
         let itemsToPlace = [
             Item(name: "Sword", type: .sword),
@@ -82,8 +80,12 @@ class GameWorld: GameWorldProtocol {
                 rooms[position.y][position.x]?.items.append(randomItem)
             }
         }
+        for _ in 0..<(roomCount / 5) {
+            let position = findReachablePosition(size: size, exclude: (startX, startY))
+            rooms[position.y][position.x]?.items.append(Item(name: "Torch", type: .torch))
+        }
         
-        stepsLimit = size * 4
+        stepsLimit = size * 3
     }
     
     private func ensureConnectivity(size: Int) {
