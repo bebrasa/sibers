@@ -28,4 +28,20 @@ struct Player {
             }
         }
     }
+    mutating func useItem(named itemName: String) -> Bool {
+        guard let index = inventory.firstIndex(where: {
+            $0.name.lowercased() == itemName.lowercased()
+        }) else { return false }
+        
+        let item = inventory.remove(at: index)
+        
+        switch item.type {
+        case .food:
+            health = min(health + 20, 100)
+            return true
+        default:
+            inventory.append(item)
+            return false
+        }
+    }
 }

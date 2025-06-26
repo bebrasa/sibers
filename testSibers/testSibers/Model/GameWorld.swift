@@ -18,6 +18,7 @@ protocol GameWorldProtocol {
     func pickupItem(named: String) -> Bool
     func dropItem(named: String) -> Bool
     func openChest() -> Bool
+    func useItem(named: String) -> Bool
     
 }
 
@@ -67,6 +68,7 @@ class GameWorld: GameWorldProtocol {
                 Item(name: "Torch", type: .torch),
                 Item(name: "Sword", type: .sword),
                 Item(name: "Apple", type: .food),
+                Item(name: "Bread", type: .food),
                 Item(name: "Gold", type: .gold(amount: .random(in: 1...150))),
                 Item(name: "Gold", type: .gold(amount: .random(in: 1...150)))
             ]
@@ -101,7 +103,8 @@ class GameWorld: GameWorldProtocol {
                         visited[ny][nx] = true
                         queue.append((nx, ny))
                         
-                        if !rooms[ny][nx]!.doors.contains(oppositeDirection(direction)) {
+                        if rooms[ny][nx]!.doors.count < 4 &&
+                           !rooms[ny][nx]!.doors.contains(oppositeDirection(direction)) {
                             rooms[ny][nx]!.doors.append(oppositeDirection(direction))
                         }
                     }
@@ -117,15 +120,24 @@ class GameWorld: GameWorldProtocol {
             }
         }
         
-        private func connectIsolatedRoom(x: Int, y: Int, size: Int, visited: inout [[Bool]]) {
+    private func connectIsolatedRoom(x: Int, y: Int, size: Int, visited: inout [[Bool]]) {
             let directions = validDirections(for: x, y, size: size)
             
             for direction in directions.shuffled() {
                 let (nx, ny) = neighborCoordinates(x: x, y: y, direction: direction)
                 
                 if visited[ny][nx] {
-                    rooms[y][x]!.doors.append(direction)
-                    rooms[ny][nx]!.doors.append(oppositeDirection(direction))
+                    if rooms[y][x]!.doors.count < 4 &&
+                       !rooms[y][x]!.doors.contains(direction) {
+                        rooms[y][x]!.doors.append(direction)
+                    }
+                    
+                    let oppositeDir = oppositeDirection(direction)
+                    if rooms[ny][nx]!.doors.count < 4 &&
+                       !rooms[ny][nx]!.doors.contains(oppositeDir) {
+                        rooms[ny][nx]!.doors.append(oppositeDir)
+                    }
+                    
                     visited[y][x] = true
                     return
                 }
@@ -158,6 +170,9 @@ class GameWorld: GameWorldProtocol {
             case .west: return .east
             case .east: return .west
             }
+        }
+        func useItem(named itemName: String) -> Bool {
+            return player.useItem(named: itemName)
         }
         
         private func validDirections(for x: Int, _ y: Int, size: Int) -> [Direction] {

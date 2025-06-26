@@ -43,6 +43,9 @@ class GamePresenter: GamePresenterProtocol {
         case "drop":
             handleDropCommand(parts: Array(parts.dropFirst()))
             
+        case "eat":
+            handleEatCommand(parts: Array(parts.dropFirst()))
+            
         case "open":
             handleOpenCommand(parts: Array(parts.dropFirst()))
             
@@ -114,6 +117,20 @@ class GamePresenter: GamePresenterProtocol {
             view?.displayError("Can't open chest. You need a key")
         }
     }
+    
+    private func handleEatCommand(parts: [Substring]) {
+            guard !parts.isEmpty else {
+                view?.displayError("Specify item to eat")
+                return
+            }
+            
+            let itemName = parts.joined(separator: " ")
+            if gameWorld.useItem(named: itemName) {
+                view?.displayText("You ate \(itemName). Health increased to \(gameWorld.player.health)%")
+            } else {
+                view?.displayError("You cannot eat \(itemName) or it's not in your inventory")
+            }
+        }
     
     private func displayInventory() {
         let inventoryList = gameWorld.player.inventory.map { item in
