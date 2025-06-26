@@ -7,6 +7,7 @@
 
 import Foundation
 
+// MARK: - GameViewProtocol
 protocol GameViewProtocol: AnyObject {
     func displayRoomDescription(_ description: String)
     func displayInventory(_ items: [String])
@@ -15,6 +16,7 @@ protocol GameViewProtocol: AnyObject {
     func displayText(_ text: String)
 }
 
+// MARK: - GameView
 class ConsoleView: GameViewProtocol {
     private var presenter: GamePresenterProtocol
     
@@ -49,7 +51,6 @@ class ConsoleView: GameViewProtocol {
         }
     }
     
-    // MARK: - GameViewProtocol
     func displayText(_ text: String) {
         print(text)
     }

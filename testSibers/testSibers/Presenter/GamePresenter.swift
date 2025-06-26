@@ -7,12 +7,14 @@
 
 import Foundation
 
+// MARK: - GamePresenterProtocol
 protocol GamePresenterProtocol {
     var view: GameViewProtocol? { get set }
     func startGame(roomCount: Int)
     func handleCommand(_ command: String)
 }
 
+// MARK: - GamePresenter
 class GamePresenter: GamePresenterProtocol {
     weak var view: GameViewProtocol?
     private let gameWorld: GameWorldProtocol
@@ -119,18 +121,18 @@ class GamePresenter: GamePresenterProtocol {
     }
     
     private func handleEatCommand(parts: [Substring]) {
-            guard !parts.isEmpty else {
-                view?.displayError("Specify item to eat")
-                return
-            }
-            
-            let itemName = parts.joined(separator: " ")
-            if gameWorld.useItem(named: itemName) {
-                view?.displayText("You ate \(itemName). Health increased to \(gameWorld.player.health)%")
-            } else {
-                view?.displayError("You cannot eat \(itemName) or it's not in your inventory")
-            }
+        guard !parts.isEmpty else {
+            view?.displayError("Specify item to eat")
+            return
         }
+        
+        let itemName = parts.joined(separator: " ")
+        if gameWorld.useItem(named: itemName) {
+            view?.displayText("You ate \(itemName). Health increased to \(gameWorld.player.health)%")
+        } else {
+            view?.displayError("You cannot eat \(itemName) or it's not in your inventory")
+        }
+    }
     
     private func displayInventory() {
         let inventoryList = gameWorld.player.inventory.map { item in
