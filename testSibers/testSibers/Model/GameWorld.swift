@@ -20,6 +20,8 @@ protocol GameWorldProtocol {
     func dropItem(named: String) -> Bool
     func openChest() -> Bool
     func useItem(named: String) -> Bool
+    func isCurrentRoomIlluminated() -> Bool
+    func illuminateCurrentRoom()
 }
 
 // MARK: - GameWorld
@@ -59,20 +61,31 @@ class GameWorld: GameWorldProtocol {
             }
         }
         
+        
         let selectedCoordinates = Array(allCoordinates.shuffled().prefix(roomCount))
+        
+        guard !selectedCoordinates.isEmpty else { return }
+        
+        let startCoord = selectedCoordinates.randomElement()!
         
         for coord in selectedCoordinates {
             let possibleDirections = validDirections(for: coord.x, coord.y, width: width, height: height)
             let doorCount = min(Int.random(in: 1...4), possibleDirections.count)
             let doors = Array(possibleDirections.shuffled().prefix(doorCount))
-            rooms[coord.y][coord.x] = Room(x: coord.x, y: coord.y, doors: doors, items: [])
+            
+            let isDark: Bool
+            if coord.x == startCoord.x && coord.y == startCoord.y {
+                isDark = false
+            } else {
+                isDark = Bool.random(probability: 45)
+            }
+            
+            rooms[coord.y][coord.x] = Room(x: coord.x, y: coord.y, doors: doors, items: [], isDark: isDark)
         }
         
         ensureConnectivity(width: width, height: height, selectedCoordinates: selectedCoordinates)
         
-        if let startCoord = selectedCoordinates.randomElement() {
-            player.currentPosition = (startCoord.x, startCoord.y)
-        }
+        player.currentPosition = (startCoord.x, startCoord.y)
         
         let keyPosition = findReachablePosition(selectedCoordinates: selectedCoordinates, exclude: player.currentPosition)
         let chestPosition = findReachablePosition(selectedCoordinates: selectedCoordinates, exclude: keyPosition)
@@ -275,5 +288,20 @@ extension GameWorld {
             return nil
         }
         return (x, y)
+    }
+}
+extension GameWorld {
+    func isCurrentRoomIlluminated() -> Bool {
+        let room = currentRoom
+        return !room.isDark ||
+               player.inventory.contains(where: { $0.type == .torch }) ||
+               room.items.contains(where: { $0.type == .torch })
+    }
+    
+    func illuminateCurrentRoom() {
+        let (x, y) = player.currentPosition
+        if y >= 0, y < rooms.count, x >= 0, x < rooms[y].count {
+            rooms[y][x]?.isDark = false
+        }
     }
 }

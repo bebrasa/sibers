@@ -6,7 +6,7 @@
 //
 
 struct Item: Equatable {
-    enum ItemType {
+    enum ItemType: Equatable {
         case key
         case chest
         case torch
@@ -19,6 +19,6 @@ struct Item: Equatable {
     let type: ItemType
     
     static func == (lhs: Item, rhs: Item) -> Bool {
-        return lhs.name == rhs.name
+        return lhs.name == rhs.name && lhs.type == rhs.type
     }
 }

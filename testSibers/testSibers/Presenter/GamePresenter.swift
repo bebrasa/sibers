@@ -35,27 +35,39 @@ class GamePresenter: GamePresenterProtocol {
             return
         }
         
-        switch action {
-        case "n", "s", "w", "e":
-            handleMovementCommand(String(action))
-            
-        case "get":
-            handleGetCommand(parts: Array(parts.dropFirst()))
-            
-        case "drop":
-            handleDropCommand(parts: Array(parts.dropFirst()))
-            
-        case "eat":
-            handleEatCommand(parts: Array(parts.dropFirst()))
-            
-        case "open":
-            handleOpenCommand(parts: Array(parts.dropFirst()))
-            
-        case "inventory":
-            displayInventory()
-            
-        default:
-            view?.displayError("Unknown command: \(command)")
+        let currentRoom = gameWorld.currentRoom
+        if currentRoom.isDark && !gameWorld.isCurrentRoomIlluminated() {
+            switch action {
+            case "n", "s", "w", "e":
+                handleMovementCommand(String(action))
+            default:
+                view?.displayError("You can't do that in the dark!")
+                return
+            }
+        }
+        else {
+            switch action {
+            case "n", "s", "w", "e":
+                handleMovementCommand(String(action))
+                
+            case "get":
+                handleGetCommand(parts: Array(parts.dropFirst()))
+                
+            case "drop":
+                handleDropCommand(parts: Array(parts.dropFirst()))
+                
+            case "eat":
+                handleEatCommand(parts: Array(parts.dropFirst()))
+                
+            case "open":
+                handleOpenCommand(parts: Array(parts.dropFirst()))
+                
+            case "inventory":
+                displayInventory()
+                
+            default:
+                view?.displayError("Unknown command: \(command)")
+            }
         }
     }
     
@@ -81,7 +93,9 @@ class GamePresenter: GamePresenterProtocol {
         
         let itemName = parts.joined(separator: " ")
         if gameWorld.pickupItem(named: itemName) {
-            if case .gold = gameWorld.player.inventory.first(where: { $0.name.lowercased() == itemName })?.type {
+            if itemName.lowercased() == "torch" {
+                view?.displayText("You picked up a torch! Now you can explore dark places.")
+            } else if case .gold = gameWorld.player.inventory.first(where: { $0.name.lowercased() == itemName })?.type {
                 view?.displayText("You picked up gold!")
             } else {
                 view?.displayText("You picked up \(itemName)")
@@ -99,8 +113,15 @@ class GamePresenter: GamePresenterProtocol {
         }
         
         let itemName = parts.joined(separator: " ")
+        let currentRoom = gameWorld.currentRoom
+        
         if gameWorld.dropItem(named: itemName) {
-            view?.displayText("You dropped \(itemName)")
+            if itemName.lowercased() == "torch" && currentRoom.isDark {
+                gameWorld.illuminateCurrentRoom()
+                view?.displayText("You dropped the torch, illuminating the room!")
+            } else {
+                view?.displayText("You dropped \(itemName)")
+            }
             updateRoomDescription()
         } else {
             view?.displayError("Can't drop \(itemName)")
@@ -154,9 +175,18 @@ class GamePresenter: GamePresenterProtocol {
     
     private func updateRoomDescription() {
         let room = gameWorld.currentRoom
+        
+        if room.isDark && !gameWorld.isCurrentRoomIlluminated() {
+            view?.displayRoomDescription("Can’t see anything in this dark place!\nThere are \(room.doors.count) doors: \(room.doors.map { $0.rawValue }.joined(separator: ", ")). ")
+            return
+        }
+        
         let healthInfo = "\nHealth: \(gameWorld.player.health)%"
         var description = "You are in the room [\(room.x),\(room.y)]. "
-        description += "There are \(room.doors.count) doors: \(room.doors.map { $0.rawValue }.joined(separator: ", ")). "
+        description += "There are \(room.doors.count) doors: \(room.doors.map { $0.rawValue }.joined(separator: ", ")). \n"
+        if room.isDark {
+            description += "It is dark. "
+        }
         
         if !room.items.isEmpty {
             let itemsDescription = room.items.map { item in
