@@ -10,5 +10,5 @@ struct Room {
     let y: Int
     var doors: [Direction]
     var items: [Item]
-    //var isDark: Bool = false
+    var isDark: Bool = false
 }

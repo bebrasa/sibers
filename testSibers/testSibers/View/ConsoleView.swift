@@ -23,17 +23,19 @@ class ConsoleView: GameViewProtocol {
     init() {
         self.presenter = GamePresenter()
         self.presenter.view = self
-        startGame()
-    }
-    
-    private func startGame() {
+        
         print("Welcome to Dragons & Crystals!\n")
         print("To show inventory type: `inventory")
         print("To healing you need to eat, type 'eat' followed by the name of an item")
         print("You also can use get, drop, open commands\n")
+        
+        startGame()
+    }
+    
+    private func startGame() {
         print("Enter number of rooms: ")
         
-        if let input = readLine(), let roomCount = Int(input) {
+        if let input = readLine(), let roomCount = Int(input), roomCount > 0 {
             presenter.startGame(roomCount: roomCount)
             gameLoop()
         } else {

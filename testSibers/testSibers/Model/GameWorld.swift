@@ -20,7 +20,6 @@ protocol GameWorldProtocol {
     func dropItem(named: String) -> Bool
     func openChest() -> Bool
     func useItem(named: String) -> Bool
-    
 }
 
 // MARK: - GameWorld
@@ -32,131 +31,126 @@ class GameWorld: GameWorldProtocol {
     
     var currentRoom: Room {
         let (x, y) = player.currentPosition
-        return rooms[y][x]!
+        guard y >= 0, y < rooms.count,
+              x >= 0, x < rooms[y].count,
+              let room = rooms[y][x] else {
+            fatalError("Invalid player position: \(player.currentPosition)")
+        }
+        return room
     }
     
     init() {
         self.player = Player(currentPosition: (0, 0))
         self.stepsLimit = 100
     }
+    
     //MARK: Generating labyrinth
     func generateMaze(roomCount: Int) {
-        let size = Int(ceil(sqrt(Double(roomCount))))
         
-        rooms = Array(repeating: Array(repeating: nil, count: size), count: size)
+        let width = Int(ceil(sqrt(Double(roomCount))))
+        let height = (roomCount + width - 1) / width
         
-        for y in 0..<size {
-            for x in 0..<size {
-                let possibleDirections = validDirections(for: x, y, size: size)
-                let doorCount = min(Int.random(in: 1...4), possibleDirections.count)
-                let doors = Array(possibleDirections.shuffled().prefix(doorCount))
-                rooms[y][x] = Room(x: x, y: y, doors: doors, items: [])
+        rooms = Array(repeating: Array(repeating: nil, count: width), count: height)
+        
+        var allCoordinates: [(x: Int, y: Int)] = []
+        for y in 0..<height {
+            for x in 0..<width {
+                allCoordinates.append((x, y))
             }
         }
         
-        ensureConnectivity(size: size)
+        let selectedCoordinates = Array(allCoordinates.shuffled().prefix(roomCount))
         
-        let startX = Int.random(in: 0..<size)
-        let startY = Int.random(in: 0..<size)
-        player.currentPosition = (startX, startY)
+        for coord in selectedCoordinates {
+            let possibleDirections = validDirections(for: coord.x, coord.y, width: width, height: height)
+            let doorCount = min(Int.random(in: 1...4), possibleDirections.count)
+            let doors = Array(possibleDirections.shuffled().prefix(doorCount))
+            rooms[coord.y][coord.x] = Room(x: coord.x, y: coord.y, doors: doors, items: [])
+        }
         
-        let keyPosition = findReachablePosition(size: size, exclude: (startX, startY))
-        let chestPosition = findReachablePosition(size: size, exclude: keyPosition)
+        ensureConnectivity(width: width, height: height, selectedCoordinates: selectedCoordinates)
+        
+        if let startCoord = selectedCoordinates.randomElement() {
+            player.currentPosition = (startCoord.x, startCoord.y)
+        }
+        
+        let keyPosition = findReachablePosition(selectedCoordinates: selectedCoordinates, exclude: player.currentPosition)
+        let chestPosition = findReachablePosition(selectedCoordinates: selectedCoordinates, exclude: keyPosition)
         
         rooms[keyPosition.y][keyPosition.x]?.items.append(Item(name: "Key", type: .key))
         rooms[chestPosition.y][chestPosition.x]?.items.append(Item(name: "Chest", type: .chest))
         
         let itemsToPlace = [
+            Item(name: "Torch", type: .torch),
             Item(name: "Sword", type: .sword),
             Item(name: "Apple", type: .food),
             Item(name: "Bread", type: .food),
-            Item(name: "Gold", type: .gold(amount: .random(in: 1...150))),
             Item(name: "Gold", type: .gold(amount: .random(in: 1...150)))
         ]
         
-        for _ in 0..<(roomCount / 2) {
-            if let randomItem = itemsToPlace.randomElement() {
-                let position = findReachablePosition(size: size, exclude: (startX, startY))
-                rooms[position.y][position.x]?.items.append(randomItem)
+        for _ in 0..<(roomCount / 5) {
+            if let coord = selectedCoordinates.randomElement() {
+                rooms[coord.y][coord.x]?.items.append(Item(name: "Torch", type: .torch))
             }
         }
-        for _ in 0..<(roomCount / 5) {
-            let position = findReachablePosition(size: size, exclude: (startX, startY))
-            rooms[position.y][position.x]?.items.append(Item(name: "Torch", type: .torch))
+        
+        for _ in 0..<(roomCount / 2) {
+            if let randomItem = itemsToPlace.randomElement(),
+               let coord = selectedCoordinates.randomElement() {
+                rooms[coord.y][coord.x]?.items.append(randomItem)
+            }
         }
         
-        stepsLimit = size * 3
+        stepsLimit = roomCount * 2
     }
     
-    private func ensureConnectivity(size: Int) {
-        var visited = Array(repeating: Array(repeating: false, count: size), count: size)
+    private func ensureConnectivity(width: Int, height: Int, selectedCoordinates: [(x: Int, y: Int)]) {
+        var visited = Set<[Int]>()
         var queue = [(x: Int, y: Int)]()
         
-        let startX = Int.random(in: 0..<size)
-        let startY = Int.random(in: 0..<size)
-        queue.append((startX, startY))
-        visited[startY][startX] = true
+        guard let start = selectedCoordinates.first else { return }
+        queue.append(start)
+        visited.insert([start.x, start.y])
         
         while !queue.isEmpty {
-            let (x, y) = queue.removeFirst()
-            let room = rooms[y][x]!
+            let coord = queue.removeFirst()
             
-            for direction in room.doors {
-                let (nx, ny) = neighborCoordinates(x: x, y: y, direction: direction)
+            for direction in Direction.allCases {
+                let (nx, ny) = neighborCoordinates(x: coord.x, y: coord.y, direction: direction)
                 
-                if nx >= 0, ny >= 0, nx < size, ny < size, !visited[ny][nx] {
-                    visited[ny][nx] = true
-                    queue.append((nx, ny))
+                guard nx >= 0, ny >= 0, nx < width, ny < height else { continue }
+                
+                guard rooms[ny][nx] != nil else { continue }
+                
+                let neighbor = (nx, ny)
+                let neighborKey = [nx, ny]
+                
+                if !visited.contains(neighborKey) {
+                    visited.insert(neighborKey)
+                    queue.append(neighbor)
                     
-                    if rooms[ny][nx]!.doors.count < 4 &&
-                       !rooms[ny][nx]!.doors.contains(oppositeDirection(direction)) {
-                        rooms[ny][nx]!.doors.append(oppositeDirection(direction))
+                    if var room = rooms[coord.y][coord.x],
+                       !room.doors.contains(direction) {
+                        room.doors.append(direction)
+                        rooms[coord.y][coord.x] = room
+                    }
+                    
+                    let opposite = oppositeDirection(direction)
+                    if var neighborRoom = rooms[ny][nx],
+                       !neighborRoom.doors.contains(opposite) {
+                        neighborRoom.doors.append(opposite)
+                        rooms[ny][nx] = neighborRoom
                     }
                 }
             }
         }
-        
-        for y in 0..<size {
-            for x in 0..<size {
-                if !visited[y][x] {
-                    connectIsolatedRoom(x: x, y: y, size: size, visited: &visited)
-                }
-            }
-        }
     }
-        
-    private func connectIsolatedRoom(x: Int, y: Int, size: Int, visited: inout [[Bool]]) {
-        let directions = validDirections(for: x, y, size: size)
-        
-        for direction in directions.shuffled() {
-            let (nx, ny) = neighborCoordinates(x: x, y: y, direction: direction)
-            
-            if visited[ny][nx] {
-                if rooms[y][x]!.doors.count < 4 &&
-                   !rooms[y][x]!.doors.contains(direction) {
-                    rooms[y][x]!.doors.append(direction)
-                }
-                
-                let oppositeDir = oppositeDirection(direction)
-                if rooms[ny][nx]!.doors.count < 4 &&
-                   !rooms[ny][nx]!.doors.contains(oppositeDir) {
-                    rooms[ny][nx]!.doors.append(oppositeDir)
-                }
-                
-                visited[y][x] = true
-                return
-            }
+    
+    private func findReachablePosition(selectedCoordinates: [(x: Int, y: Int)], exclude: (x: Int, y: Int)) -> (x: Int, y: Int) {
+        let filteredCoords = selectedCoordinates.filter { coord in
+            coord.x != exclude.x || coord.y != exclude.y
         }
-    }
-        
-    private func findReachablePosition(size: Int, exclude: (x: Int, y: Int)) -> (x: Int, y: Int) {
-        var position = exclude
-        
-        while position == exclude {
-            position = (Int.random(in: 0..<size), Int.random(in: 0..<size))
-        }
-        
-        return position
+        return filteredCoords.randomElement() ?? exclude
     }
     
     private func neighborCoordinates(x: Int, y: Int, direction: Direction) -> (Int, Int) {
@@ -176,35 +170,38 @@ class GameWorld: GameWorldProtocol {
         case .east: return .west
         }
     }
+    
     func useItem(named itemName: String) -> Bool {
         return player.useItem(named: itemName)
     }
     
-    private func validDirections(for x: Int, _ y: Int, size: Int) -> [Direction] {
+    private func validDirections(for x: Int, _ y: Int, width: Int, height: Int) -> [Direction] {
         var directions = [Direction]()
         
-        if y > 0 { directions.append(.north) }
-        if y < size - 1 { directions.append(.south) }
-        if x > 0 { directions.append(.west) }
-        if x < size - 1 { directions.append(.east) }
+        if y > 0 && rooms[y-1][x] != nil { directions.append(.north) }
+        if y < height - 1 && rooms[y+1][x] != nil { directions.append(.south) }
+        if x > 0 && rooms[y][x-1] != nil { directions.append(.west) }
+        if x < width - 1 && rooms[y][x+1] != nil { directions.append(.east) }
         
         return directions
     }
     
     func movePlayer(direction: Direction) {
         guard !isGameOver else { return }
-        guard currentRoom.doors.contains(direction) else { return }
         
-        var newPosition = player.currentPosition
+        let (x, y) = player.currentPosition
+        guard rooms[y][x]?.doors.contains(direction) == true else { return }
+        
+        var newPosition = (x: x, y: y)
         switch direction {
         case .north: newPosition.y -= 1
         case .south: newPosition.y += 1
-        case .west:  newPosition.x -= 1
-        case .east:  newPosition.x += 1
+        case .west: newPosition.x -= 1
+        case .east: newPosition.x += 1
         }
         
-        guard newPosition.x >= 0, newPosition.y >= 0,
-              newPosition.x < rooms.count, newPosition.y < rooms.count,
+        guard newPosition.y >= 0, newPosition.y < rooms.count,
+              newPosition.x >= 0, newPosition.x < rooms[newPosition.y].count,
               rooms[newPosition.y][newPosition.x] != nil else {
             return
         }
@@ -216,7 +213,6 @@ class GameWorld: GameWorldProtocol {
             isGameOver = true
         }
     }
-    
 }
 
 extension GameWorld {
