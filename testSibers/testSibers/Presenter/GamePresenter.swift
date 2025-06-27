@@ -16,13 +16,16 @@ protocol GamePresenterProtocol {
 
 // MARK: - GamePresenter
 class GamePresenter: GamePresenterProtocol {
+    // MARK: - Properties
     weak var view: GameViewProtocol?
     private let gameWorld: GameWorldProtocol
     
+    // MARK: - Init
     init(gameWorld: GameWorldProtocol = GameWorld()) {
         self.gameWorld = gameWorld
     }
     
+    // MARK: - GamePresenterProtocol
     func startGame(roomCount: Int) {
         gameWorld.generateMaze(roomCount: roomCount)
         updateRoomDescription()
@@ -71,6 +74,7 @@ class GamePresenter: GamePresenterProtocol {
         }
     }
     
+    // MARK: - Private Methods
     private func handleMovementCommand(_ direction: String) {
         guard let direction = Direction(rawValue: direction.uppercased()) else {
             view?.displayError("Invalid direction")
@@ -177,7 +181,7 @@ class GamePresenter: GamePresenterProtocol {
         let room = gameWorld.currentRoom
         
         if room.isDark && !gameWorld.isCurrentRoomIlluminated() {
-            view?.displayRoomDescription("Can’t see anything in this dark place!\nThere are \(room.doors.count) doors: \(room.doors.map { $0.rawValue }.joined(separator: ", ")). ")
+            view?.displayRoomDescription("Can't see anything in this dark place!\nThere are \(room.doors.count) doors: \(room.doors.map { $0.rawValue }.joined(separator: ", ")). ")
             return
         }
         

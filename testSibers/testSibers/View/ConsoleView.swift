@@ -18,8 +18,10 @@ protocol GameViewProtocol: AnyObject {
 
 // MARK: - GameView
 class ConsoleView: GameViewProtocol {
+    // MARK: - Properties
     private var presenter: GamePresenterProtocol
     
+    // MARK: - Init
     init() {
         self.presenter = GamePresenter()
         self.presenter.view = self
@@ -32,6 +34,7 @@ class ConsoleView: GameViewProtocol {
         startGame()
     }
     
+    // MARK: - Private Methods
     private func startGame() {
         print("Enter number of rooms: ")
         
@@ -53,6 +56,7 @@ class ConsoleView: GameViewProtocol {
         }
     }
     
+    // MARK: - GameViewProtocol
     func displayText(_ text: String) {
         print(text)
     }

@@ -7,7 +7,9 @@
 
 import Foundation
 
+// MARK: - Bool+Random
 extension Bool {
+    // MARK: - Static Methods
     static func random(probability: Int) -> Bool {
         guard probability > 0 else { return false }
         guard probability < 100 else { return true }

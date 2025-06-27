@@ -5,12 +5,15 @@
 //  Created by Никита Кочанов on 26.06.2025.
 //
 
+// MARK: - Player
 struct Player {
+    // MARK: - Properties
     var currentPosition: (x: Int, y: Int)
     var inventory: [Item] = []
     var health: Int = 100
     var gold: Int = 0
     
+    // MARK: - Methods
     func hasItem(named itemName: String) -> Bool {
         inventory.contains { $0.name.lowercased() == itemName.lowercased() }
     }
